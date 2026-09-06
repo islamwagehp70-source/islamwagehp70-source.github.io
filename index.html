@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIXER — تجربة Pi Testnet</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #171a21;
+    --accent: #7c5cff;
+    --accent2: #22c55e;
+    --danger: #ef4444;
+    --text: #e8e8ec;
+    --muted: #8b8f9a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .wrap { width: 100%; max-width: 480px; }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+    border: 1px solid #262a33;
+  }
+  .badge {
+    display: inline-block;
+    background: #3a2f6b;
+    color: #c9bbff;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+  }
+  button {
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.15s;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-secondary { background: #2a2e38; color: var(--text); }
+  .status {
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 10px;
+    display: none;
+  }
+  .status.ok { background: rgba(34,197,94,0.12); color: var(--accent2); display: block; }
+  .status.err { background: rgba(239,68,68,0.12); color: var(--danger); display: block; }
+  .status.info { background: rgba(124,92,255,0.12); color: #c9bbff; display: block; }
+  pre {
+    background: #0b0d11;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12px;
+    overflow-x: auto;
+    max-height: 240px;
+    overflow-y: auto;
+    color: #b8bcc6;
+    direction: ltr;
+    text-align: left;
+  }
+  .field { margin-bottom: 12px; }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #2a2e38;
+    background: #0b0d11;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .note {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧪 FIXER × Pi Network — Testnet Sandbox</h1>
+  <div class="subtitle">صفحة تجربة تقنية معزولة — مش جزء من تطبيق فيكسر الفعلي، الهدف بس فهم auth وpayments flow قبل ما ندمجهم في Phase 5.</div>
+
+  <div class="card">
+    <span class="badge">الخطوة 1</span>
+    <div>تهيئة الـ SDK (Sandbox Mode)</div>
+    <button class="btn-primary" id="initBtn">تهيئة Pi SDK</button>
+    <div class="status" id="initStatus"></div>
+  </div>
+
+  <div class="card">
+    <span class="badge">الخطوة 2</span>
+    <div>تسجيل الدخول عبر Pi (Authentication)</div>
+    <button class="btn-primary" id="authBtn" disabled>تسجيل الدخول بحساب Pi</button>
+    <div class="status" id="authStatus"></div>
+  </div>
+
+  <div class="card">
+    <span class="badge">الخطوة 3</span>
+    <div>تجربة دفعة تجريبية (Testnet فقط — مش فلوس حقيقية)</div>
+    <div class="field">
+      <label>المبلغ (π تجريبي)</label>
+      <input type="number" id="amountInput" value="1" step="0.01" min="0.01">
+    </div>
+    <div class="field">
+      <label>وصف الدفعة (memo)</label>
+      <input type="text" id="memoInput" value="اختبار طلب خدمة تنظيف - FIXER">
+    </div>
+    <button class="btn-primary" id="payBtn" disabled>إنشاء دفعة تجريبية</button>
+    <div class="status" id="payStatus"></div>
+  </div>
+
+  <div class="card">
+    <div>سجل الأحداث (Log)</div>
+    <pre id="log">في انتظار البدء...</pre>
+  </div>
+
+  <div class="note">
+    ⚠️ الصفحة دي لازم تتفتح جوه <b>Pi Browser</b> بعد ما تسجلها في Pi Developer Portal (pi://develop.pinet.com) وتحصل على Sandbox URL، وتفعّل "Authorize Sandbox" من تطبيق Pi على موبايلك. فتحها في متصفح عادي (كروم مثلاً) لن يعمل لأن window.Pi مش موجود إلا جوه Pi Browser.
+  </div>
+</div>
+
+<script src="https://sdk.minepi.com/pi-sdk.js"></script>
+<script>
+  const logEl = document.getElementById('log');
+  const initBtn = document.getElementById('initBtn');
+  const authBtn = document.getElementById('authBtn');
+  const payBtn = document.getElementById('payBtn');
+  const initStatus = document.getElementById('initStatus');
+  const authStatus = document.getElementById('authStatus');
+  const payStatus = document.getElementById('payStatus');
+
+  let logLines = [];
+  function log(msg, data) {
+    const time = new Date().toLocaleTimeString('ar-EG');
+    let line = `[${time}] ${msg}`;
+    if (data !== undefined) {
+      try { line += ' ' + JSON.stringify(data, null, 2); } catch(e) { line += ' ' + String(data); }
+    }
+    logLines.push(line);
+    logEl.textContent = logLines.join('\n\n');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function setStatus(el, type, text) {
+    el.className = 'status ' + type;
+    el.textContent = text;
+  }
+
+  // خطوة 1: تهيئة SDK في وضع Sandbox (Testnet)
+  initBtn.addEventListener('click', function () {
+    try {
+      if (typeof Pi === 'undefined') {
+        setStatus(initStatus, 'err', '❌ window.Pi غير موجود — لازم تفتح الصفحة دي جوه Pi Browser.');
+        log('خطأ: Pi SDK غير محمّل. تأكد إنك فاتح الصفحة جوه Pi Browser.');
+        return;
+      }
+      Pi.init({ version: "2.0", sandbox: true });
+      setStatus(initStatus, 'ok', '✅ تم تهيئة الـ SDK في وضع Sandbox بنجاح.');
+      log('Pi.init() نجح - sandbox: true');
+      initBtn.disabled = true;
+      authBtn.disabled = false;
+    } catch (err) {
+      setStatus(initStatus, 'err', '❌ فشل التهيئة: ' + err.message);
+      log('خطأ في Pi.init()', err.message);
+    }
+  });
+
+  // خطوة 2: تسجيل الدخول
+  authBtn.addEventListener('click', function () {
+    authBtn.disabled = true;
+    setStatus(authStatus, 'info', '⏳ جاري طلب تسجيل الدخول...');
+    log('استدعاء Pi.authenticate() بصلاحيات: payments, username');
+
+    const scopes = ['payments', 'username'];
+
+    function onIncompletePaymentFound(payment) {
+      log('تم العثور على دفعة سابقة غير مكتملة', payment);
+    }
+
+    Pi.authenticate(scopes, onIncompletePaymentFound)
+      .then(function (auth) {
+        setStatus(authStatus, 'ok', '✅ تم تسجيل الدخول: ' + auth.user.username);
+        log('نجح تسجيل الدخول', { username: auth.user.username, uid: auth.user.uid });
+        payBtn.disabled = false;
+      })
+      .catch(function (error) {
+        setStatus(authStatus, 'err', '❌ فشل تسجيل الدخول: ' + error.message);
+        log('خطأ في Pi.authenticate()', error.message);
+        authBtn.disabled = false;
+      });
+  });
+
+  // خطوة 3: إنشاء دفعة تجريبية
+  payBtn.addEventListener('click', function () {
+    const amount = parseFloat(document.getElementById('amountInput').value) || 1;
+    const memo = document.getElementById('memoInput').value || 'اختبار FIXER';
+
+    payBtn.disabled = true;
+    setStatus(payStatus, 'info', '⏳ جاري إنشاء الدفعة التجريبية...');
+    log('استدعاء Pi.createPayment()', { amount: amount, memo: memo });
+
+    Pi.createPayment({
+      amount: amount,
+      memo: memo,
+      metadata: { source: 'fixer_sandbox_test', service: 'cleaning_test' }
+    }, {
+      onReadyForServerApproval: function (paymentId) {
+        log('onReadyForServerApproval — محتاج موافقة من السيرفر (backend لسه مش موصول في التجربة دي)', { paymentId });
+        setStatus(payStatus, 'info', '⏳ الدفعة جاهزة لموافقة السيرفر (paymentId: ' + paymentId + ')');
+      },
+      onReadyForServerCompletion: function (paymentId, txid) {
+        log('onReadyForServerCompletion — الدفعة اتنفذت على البلوكشين', { paymentId, txid });
+        setStatus(payStatus, 'ok', '✅ الدفعة اكتملت على Testnet! txid: ' + txid);
+        payBtn.disabled = false;
+      },
+      onCancel: function (paymentId) {
+        log('المستخدم ألغى الدفعة', { paymentId });
+        setStatus(payStatus, 'err', '⚠️ تم إلغاء الدفعة.');
+        payBtn.disabled = false;
+      },
+      onError: function (error, payment) {
+        log('خطأ في الدفعة', { error: error.message, payment });
+        setStatus(payStatus, 'err', '❌ خطأ: ' + error.message);
+        payBtn.disabled = false;
+      }
+    });
+  });
+
+  log('الصفحة جاهزة. اضغط "تهيئة Pi SDK" للبدء.');
+</script>
+</body>
+</html>
